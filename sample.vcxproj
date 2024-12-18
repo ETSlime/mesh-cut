@@ -23,6 +23,7 @@
     <ProjectGuid>{886725B4-11FC-4A4D-938B-77BD4ECC6D0C}</ProjectGuid>
     <RootNamespace>sample</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>mesh cut</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

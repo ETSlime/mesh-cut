@@ -45,6 +45,12 @@ struct SUBSET
 	unsigned short	StartIndex;
 	unsigned short	IndexNum;
 	MODEL_MATERIAL	Material;
+
+	SUBSET()
+	{
+		StartIndex = 0;
+		IndexNum = 0;
+	}
 };
 
 // ÉÇÉfÉãç\ë¢ëÃ
@@ -82,14 +88,15 @@ struct DX11_MODEL
 	//unsigned short	SubsetNum;
 
 	MODEL*			modelData;
-	SimpleArray<VERTEX_3D> newVertex;
-	SimpleArray<unsigned short> newIndex;
+	SimpleArray<SimpleArray<VERTEX_3D>*> newVertexArrays;
+	SimpleArray<SimpleArray<VERTEX_3D>*> oldVertexArrays;
 
 	DX11_MODEL() 
 	{
 		modelData = new MODEL;
 		VertexBuffer = NULL;
 		IndexBuffer = NULL;
+
 	}
 };
 

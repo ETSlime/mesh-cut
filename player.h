@@ -5,7 +5,7 @@
 //
 //=============================================================================
 #pragma once
-
+#include "SimpleArray.h"
 
 //*****************************************************************************
 // マクロ定義
@@ -47,6 +47,12 @@ struct Plane
 	XMFLOAT4X4	localmtxWorld;
 };
 
+struct VertexWithAngle 
+{
+	VERTEX_3D vertex;
+	float angle;
+};
+
 //*****************************************************************************
 // プロトタイプ宣言
 //*****************************************************************************
@@ -61,5 +67,8 @@ void DrawCuttingPlane(void);
 void MakeCuttingPlaneVertex(void);
 void UpdateCuttingPlane(void);
 void CutMeshes(DX11_MODEL* model);
-void ProcessEdge(VERTEX_3D v1, VERTEX_3D v2, float d1, float d2, VERTEX_3D* intersectionPoint, int* count);
+void ProcessEdge(VERTEX_3D v1, VERTEX_3D v2, float d1, float d2, VERTEX_3D* intersectionPoint, int* count, BOOL& potentialCut);
 void SetLocalCuttingPlane(void);
+SimpleArray<VERTEX_3D>* CheckAndCreateNewPlane(SimpleArray<VERTEX_3D>* cuttingPoints);
+void CreateNewPlane(SimpleArray<VERTEX_3D>* newPlane, SimpleArray<VERTEX_3D>* cuttingPoints);
+void InsertionSort(SimpleArray<VertexWithAngle>& vertices);

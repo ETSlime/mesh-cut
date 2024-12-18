@@ -122,7 +122,7 @@ void UnloadModel( DX11_MODEL *Model )
 
 	delete[] Model->modelData->VertexArray;
 	delete[] Model->modelData->IndexArray;
-	//delete[] Model->modelData->SubsetArray;
+	delete[] Model->modelData->SubsetArray;
 }
 
 
@@ -590,24 +590,90 @@ void SetModelDiffuse(DX11_MODEL *Model, int mno, XMFLOAT4 diffuse)
 void UpdateModel(DX11_MODEL* Model)
 {
 	UnloadModel(Model);
-	Model->modelData->VertexNum = Model->newVertex.getSize();
-	Model->modelData->IndexNum = Model->newIndex.getSize();
 
-	Model->modelData->VertexArray = new VERTEX_3D[Model->modelData->VertexNum];
-
-	for (int i = 0; i < Model->modelData->VertexNum; i++)
+	unsigned short vertexCnt = 0, indexCnt = 0, newSubsetCnt = 0, oldSubsetCnt = 0;
+	int newVertexArraySize = Model->newVertexArrays.getSize();
+	int oldVertexArraySize = Model->oldVertexArrays.getSize();
+	for (int i = 0; i < newVertexArraySize; i++)
 	{
-		Model->modelData->VertexArray[i] = Model->newVertex[i];
+		SimpleArray<VERTEX_3D>* subsetVertex = Model->newVertexArrays[i];
+		int subsetVertexCnt = subsetVertex->getSize();
+		if (subsetVertexCnt != 0)
+		{
+			newSubsetCnt++;
+			vertexCnt += subsetVertexCnt;
+		}
+	}
+	for (int i = 0; i < oldVertexArraySize; i++)
+	{
+		SimpleArray<VERTEX_3D>* subsetVertex = Model->oldVertexArrays[i];
+		int subsetVertexCnt = subsetVertex->getSize();
+		if (subsetVertexCnt != 0)
+		{
+			oldSubsetCnt++;
+			vertexCnt += subsetVertexCnt;
+		}
 	}
 
+	Model->modelData->SubsetNum = newSubsetCnt + oldSubsetCnt;
+	Model->modelData->SubsetArray = new SUBSET[Model->modelData->SubsetNum];
+
+	Model->modelData->VertexNum = vertexCnt;
+	Model->modelData->IndexNum = vertexCnt;
+	Model->modelData->VertexArray = new VERTEX_3D[Model->modelData->VertexNum];
 	Model->modelData->IndexArray = new unsigned short[Model->modelData->IndexNum];
 
-	for (int i = 0; i < Model->modelData->IndexNum; i++)
+	vertexCnt = 0;
+
+	for (int i = 0; i < newSubsetCnt; i++)
 	{
-		Model->modelData->IndexArray[i] = Model->newIndex[i];
+		SUBSET subset;
+		SimpleArray<VERTEX_3D>* subsetVertex = Model->newVertexArrays[i];
+		int subsetVertexCnt = subsetVertex->getSize();
+		subset.StartIndex = indexCnt;
+		subset.IndexNum = subsetVertexCnt;
+		Model->modelData->SubsetArray[i] = subset;
+		for (int j = 0; j < subsetVertexCnt; j++)
+		{
+			Model->modelData->VertexArray[vertexCnt++] = (*subsetVertex)[j];
+			Model->modelData->IndexArray[indexCnt++] = indexCnt;
+		}
+
+		delete Model->newVertexArrays[i];
 	}
 
-	Model->modelData->SubsetArray[0].IndexNum = Model->modelData->IndexNum;
+	for (int i = 0; i < oldSubsetCnt; i++)
+	{
+		SUBSET subset;
+		SimpleArray<VERTEX_3D>* subsetVertex = Model->oldVertexArrays[i];
+		int subsetVertexCnt = subsetVertex->getSize();
+		subset.StartIndex = indexCnt;
+		subset.IndexNum = subsetVertexCnt;
+		Model->modelData->SubsetArray[i + newSubsetCnt] = subset;
+		for (int j = 0; j < subsetVertexCnt; j++)
+		{
+			Model->modelData->VertexArray[vertexCnt++] = (*subsetVertex)[j];
+			Model->modelData->IndexArray[indexCnt++] = indexCnt;
+		}
+
+		delete Model->oldVertexArrays[i];
+	}
+
+	//Model->modelData->VertexNum = Model->newVertex.getSize();
+	//Model->modelData->IndexNum = Model->newIndex.getSize();
+	//Model->modelData->SubsetNum = Model->newSubsetArray.getSize();
+
+	//for (int i = 0; i < Model->modelData->VertexNum; i++)
+	//{
+	//	Model->modelData->VertexArray[i] = Model->newVertex[i];
+	//}
+
+	//for (int i = 0; i < Model->modelData->IndexNum; i++)
+	//{
+	//	Model->modelData->IndexArray[i] = Model->newIndex[i];
+	//}
+
+	//Model->modelData->SubsetArray[0].IndexNum = Model->modelData->IndexNum;
 
 	// 頂点バッファ生成
 	{

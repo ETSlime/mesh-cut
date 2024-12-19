@@ -90,6 +90,8 @@ struct DX11_MODEL
 	MODEL*			modelData;
 	SimpleArray<SimpleArray<VERTEX_3D>*> newVertexArrays;
 	SimpleArray<SimpleArray<VERTEX_3D>*> oldVertexArrays;
+	SimpleArray<MODEL_MATERIAL> newSubsetMaterial;
+	SimpleArray<MODEL_MATERIAL> oldSubsetMaterial;
 
 	DX11_MODEL() 
 	{

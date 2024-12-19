@@ -6,7 +6,7 @@
 //=============================================================================
 #pragma once
 #include "SimpleArray.h"
-
+#include "HashTable.h"
 //*****************************************************************************
 // マクロ定義
 //*****************************************************************************
@@ -53,6 +53,13 @@ struct VertexWithAngle
 	float angle;
 };
 
+struct IntersectPoints
+{
+	XMFLOAT3 point1;
+	XMFLOAT3 point2;
+	VERTEX_3D intersection;
+};
+
 //*****************************************************************************
 // プロトタイプ宣言
 //*****************************************************************************
@@ -67,7 +74,8 @@ void DrawCuttingPlane(void);
 void MakeCuttingPlaneVertex(void);
 void UpdateCuttingPlane(void);
 void CutMeshes(DX11_MODEL* model);
-void ProcessEdge(VERTEX_3D v1, VERTEX_3D v2, float d1, float d2, VERTEX_3D* intersectionPoint, int* count, BOOL& potentialCut);
+void ProcessEdge(VERTEX_3D v1, VERTEX_3D v2, float d1, float d2, unsigned short idx1, unsigned short idx2, 
+	IntersectPoints* intersectionPoint, int* count, BOOL& potentialCut);
 void SetLocalCuttingPlane(void);
 SimpleArray<VERTEX_3D>* CheckAndCreateNewPlane(SimpleArray<VERTEX_3D>* cuttingPoints);
 void CreateNewPlane(SimpleArray<VERTEX_3D>* newPlane, SimpleArray<VERTEX_3D>* cuttingPoints);

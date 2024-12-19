@@ -9,8 +9,10 @@ private:
 public:
     SimpleArray() : array(nullptr), capacity(0), size(0) {}
 
-    ~SimpleArray() {
-        delete[] array;
+    ~SimpleArray() 
+    {
+        if (array)
+            delete[] array;
     }
 
     void push_back(const T& item) {

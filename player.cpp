@@ -15,7 +15,7 @@
 //*****************************************************************************
 // マクロ定義
 //*****************************************************************************
-#define	MODEL_PLAYER		"data/MODEL/cube.obj"			// 読み込むモデル名
+#define	MODEL_PLAYER		"data/MODEL/slime.obj"			// 読み込むモデル名
 
 #define	VALUE_MOVE			(2.0f)							// 移動量
 #define	VALUE_ROTATE		(XM_PI * 0.02f)					// 回転量
@@ -205,6 +205,8 @@ void CutMeshes(DX11_MODEL* model)
 		SimpleArray<VERTEX_3D>* oldVertexArray = new SimpleArray<VERTEX_3D>;
 		SimpleArray<VERTEX_3D>* cuttingPointArray = new SimpleArray<VERTEX_3D>;
 		BOOL potentialCut = FALSE, subsetCut = FALSE;
+		HashTable* cutVertexMap = new HashTable(model->modelData->SubsetArray[i].IndexNum / 3 * 2);
+
 		for (unsigned short j = startIdx; j < startIdx + model->modelData->SubsetArray[i].IndexNum; j += 3)
 		{
 			VERTEX_3D v1 = model->modelData->VertexArray[j];
@@ -240,12 +242,12 @@ void CutMeshes(DX11_MODEL* model)
 					v3.Position.z - cuttingPlane.localPoint.z)),
 				XMLoadFloat3(&cuttingPlane.localNormal)));
 
-			VERTEX_3D intersectPoints[2];
+			IntersectPoints intersectPoints[2];
 			int intersectCount = 0;
 
-			ProcessEdge(v1, v2, d1, d2, intersectPoints, &intersectCount, potentialCut);
-			ProcessEdge(v1, v3, d1, d3, intersectPoints, &intersectCount, potentialCut);
-			ProcessEdge(v2, v3, d2, d3, intersectPoints, &intersectCount, potentialCut);
+			ProcessEdge(v1, v2, d1, d2, j, j + 1, intersectPoints, &intersectCount, potentialCut);
+			ProcessEdge(v1, v3, d1, d3, j, j + 2, intersectPoints, &intersectCount, potentialCut);
+			ProcessEdge(v2, v3, d2, d3, j + 1, j + 2, intersectPoints, &intersectCount, potentialCut);
 
 			if (potentialCut == TRUE)
 			{
@@ -263,8 +265,16 @@ void CutMeshes(DX11_MODEL* model)
 
 			if (intersectCount == 2)
 			{
-				cuttingPointArray->push_back(intersectPoints[0]);
-				cuttingPointArray->push_back(intersectPoints[1]);
+				if (cutVertexMap->search(intersectPoints[0].point1, intersectPoints[0].point2) == nullptr)
+				{
+					cuttingPointArray->push_back(intersectPoints[0].intersection);
+					cutVertexMap->insert(intersectPoints[0].point1, intersectPoints[0].point2);
+				}
+				if (cutVertexMap->search(intersectPoints[1].point1, intersectPoints[1].point2) == nullptr)
+				{
+					cuttingPointArray->push_back(intersectPoints[1].intersection);
+					cutVertexMap->insert(intersectPoints[1].point1, intersectPoints[1].point2);
+				}
 				subsetCut = TRUE;
 				if ((d1 > 0 && d2 < 0 && d3 < 0) || (d1 < 0 && d2 > 0 && d3 > 0))
 				{
@@ -277,10 +287,10 @@ void CutMeshes(DX11_MODEL* model)
 						dir *= -1;
 					}
 						
-					newPoint1 = intersectPoints[0];
-					newPoint2 = intersectPoints[1];
-					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					newPoint1 = intersectPoints[0].intersection;
+					newPoint2 = intersectPoints[1].intersection;
+					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].intersection.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].intersection.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					XMStoreFloat3(&v1.Position, XMLoadFloat3(&v1.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 
 					if (d1 < 0)
@@ -297,10 +307,10 @@ void CutMeshes(DX11_MODEL* model)
 					}
 
 
-					newPoint1 = intersectPoints[0];
-					newPoint2 = intersectPoints[1];
-					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					newPoint1 = intersectPoints[0].intersection;
+					newPoint2 = intersectPoints[1].intersection;
+					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].intersection.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].intersection.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					XMStoreFloat3(&v2.Position, XMLoadFloat3(&v2.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					XMStoreFloat3(&v3.Position, XMLoadFloat3(&v3.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 
@@ -330,10 +340,10 @@ void CutMeshes(DX11_MODEL* model)
 					int dir = 1;
 					if (d2 < 0)
 						dir *= -1;
-					newPoint1 = intersectPoints[0];
-					newPoint2 = intersectPoints[1];
-					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					newPoint1 = intersectPoints[0].intersection;
+					newPoint2 = intersectPoints[1].intersection;
+					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].intersection.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].intersection.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					XMStoreFloat3(&v2.Position, XMLoadFloat3(&v2.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 
 					// Vertex 2 is alone
@@ -350,10 +360,10 @@ void CutMeshes(DX11_MODEL* model)
 						newVertexArray2->push_back(newPoint2);
 					}
 
-					newPoint1 = intersectPoints[0];
-					newPoint2 = intersectPoints[1];
-					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					newPoint1 = intersectPoints[0].intersection;
+					newPoint2 = intersectPoints[1].intersection;
+					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].intersection.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].intersection.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					XMStoreFloat3(&v1.Position, XMLoadFloat3(&v1.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					XMStoreFloat3(&v3.Position, XMLoadFloat3(&v3.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					
@@ -382,10 +392,10 @@ void CutMeshes(DX11_MODEL* model)
 					int dir = 1;
 					if (d3 < 0)
 						dir *= -1;
-					newPoint1 = intersectPoints[0];
-					newPoint2 = intersectPoints[1];
-					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					newPoint1 = intersectPoints[0].intersection;
+					newPoint2 = intersectPoints[1].intersection;
+					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].intersection.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].intersection.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					XMStoreFloat3(&v3.Position, XMLoadFloat3(&v3.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					// Vertex 3 is alone
 					if (d3 < 0)
@@ -401,10 +411,10 @@ void CutMeshes(DX11_MODEL* model)
 						newVertexArray2->push_back(newPoint2);
 					}
 
-					newPoint1 = intersectPoints[0];
-					newPoint2 = intersectPoints[1];
-					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					newPoint1 = intersectPoints[0].intersection;
+					newPoint2 = intersectPoints[1].intersection;
+					XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].intersection.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
+					XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].intersection.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					XMStoreFloat3(&v1.Position, XMLoadFloat3(&v1.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					XMStoreFloat3(&v2.Position, XMLoadFloat3(&v2.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
 					
@@ -455,6 +465,8 @@ void CutMeshes(DX11_MODEL* model)
 			}
 		}
 
+		delete cutVertexMap;
+
 		SimpleArray<VERTEX_3D>* newCuttingPlane = CheckAndCreateNewPlane(cuttingPointArray);
 		if (newCuttingPlane != nullptr)
 		{
@@ -475,6 +487,8 @@ void CutMeshes(DX11_MODEL* model)
 		cuttingPointArray->clear();
 		delete cuttingPointArray;
 
+		MODEL_MATERIAL material = model->modelData->SubsetArray[i].Material;
+
 		if (subsetCut == TRUE)
 		{
 			updateModel = TRUE;
@@ -484,216 +498,32 @@ void CutMeshes(DX11_MODEL* model)
 		else if (oldVertexArray->getSize() == 0)
 			delete oldVertexArray;
 		else
+		{
 			model->oldVertexArrays.push_back(oldVertexArray);
+			model->oldSubsetMaterial.push_back(material);
+		}
+			
 
 
 		if (newVertexArray1->getSize() == 0)
 			delete newVertexArray1;
 		else
+		{
 			model->newVertexArrays.push_back(newVertexArray1);
+			model->newSubsetMaterial.push_back(material);
+		}
+
 
 		if (newVertexArray2->getSize() == 0)
 			delete newVertexArray2;
 		else
+		{
 			model->newVertexArrays.push_back(newVertexArray2);
+			model->newSubsetMaterial.push_back(material);
+		}
+			
 
 	}
-
-
-	//for (unsigned short i = 0; i < model->modelData->VertexNum; i += 3)
-	//{
-	//	VERTEX_3D v1 = model->modelData->VertexArray[i];
-	//	VERTEX_3D v2 = model->modelData->VertexArray[i+1];
-	//	VERTEX_3D v3 = model->modelData->VertexArray[i+2];
-
-	//	float d1 = XMVectorGetX(XMVector3Dot(
-	//		XMLoadFloat3(&XMFLOAT3(
-	//			v1.Position.x - cuttingPlane.localPoint.x,
-	//			v1.Position.y - cuttingPlane.localPoint.y,
-	//			v1.Position.z - cuttingPlane.localPoint.z)),
-	//		XMLoadFloat3(&cuttingPlane.localNormal)));
-
-	//	float d2 = XMVectorGetX(XMVector3Dot(
-	//		XMLoadFloat3(&XMFLOAT3(
-	//			v2.Position.x - cuttingPlane.localPoint.x,
-	//			v2.Position.y - cuttingPlane.localPoint.y,
-	//			v2.Position.z - cuttingPlane.localPoint.z)),
-	//		XMLoadFloat3(&cuttingPlane.localNormal)));
-
-	//	float d3 = XMVectorGetX(XMVector3Dot(
-	//		XMLoadFloat3(&XMFLOAT3(
-	//			v3.Position.x - cuttingPlane.localPoint.x,
-	//			v3.Position.y - cuttingPlane.localPoint.y,
-	//			v3.Position.z - cuttingPlane.localPoint.z)),
-	//		XMLoadFloat3(&cuttingPlane.localNormal)));
-
-	//	VERTEX_3D intersectPoints[2];
-	//	int intersectCount = 0;
-
-	//	ProcessEdge(v1, v2, d1, d2, intersectPoints, &intersectCount);
-	//	ProcessEdge(v1, v3, d1, d3, intersectPoints, &intersectCount);
-	//	ProcessEdge(v2, v3, d2, d3, intersectPoints, &intersectCount);
-
-	//	if (intersectCount == 2)
-	//	{
-	//		if ((d1 > 0 && d2 < 0 && d3 < 0) || (d1 < 0 && d2 > 0 && d3 > 0))
-	//		{
-	//			// Vertex 1 is on one side, vertices 2 and 3 are on the other side
-	//			// Vertex 1 is alone
-	//			VERTEX_3D newPoint1, newPoint2;
-	//			int dir = 1;
-	//			if (d1 < 0)
-	//				dir *= -1;
-	//			newPoint1 = intersectPoints[0];
-	//			newPoint2 = intersectPoints[1];
-	//			XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&v1.Position, XMLoadFloat3(&v1.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			model->newVertex.push_back(v1);
-	//			model->newVertex.push_back(newPoint1);
-	//			model->newVertex.push_back(newPoint2);
-
-	//			unsigned short index = model->newIndex.getSize();
-	//			model->newIndex.push_back(index);
-	//			model->newIndex.push_back(index + 1);
-	//			model->newIndex.push_back(index + 2);
-
-
-	//			newPoint1 = intersectPoints[0];
-	//			newPoint2 = intersectPoints[1];
-	//			XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&v2.Position, XMLoadFloat3(&v2.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&v3.Position, XMLoadFloat3(&v3.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-
-	//			model->newVertex.push_back(v2);
-	//			model->newVertex.push_back(v3);
-	//			model->newVertex.push_back(newPoint1);
-
-	//			index = model->newIndex.getSize();
-	//			model->newIndex.push_back(index);
-	//			model->newIndex.push_back(index + 1);
-	//			model->newIndex.push_back(index + 2);
-
-	//			model->newVertex.push_back(v3);
-	//			model->newVertex.push_back(newPoint1);
-	//			model->newVertex.push_back(newPoint2);
-
-	//			index = model->newIndex.getSize();
-	//			model->newIndex.push_back(index);
-	//			model->newIndex.push_back(index + 1);
-	//			model->newIndex.push_back(index + 2);
-	//		}
-	//		else if ((d2 > 0 && d1 < 0 && d3 < 0) || (d2 < 0 && d1 > 0 && d3 > 0))
-	//		{
-	//			VERTEX_3D newPoint1, newPoint2;
-	//			int dir = 1;
-	//			if (d2 < 0)
-	//				dir *= -1;
-	//			newPoint1 = intersectPoints[0];
-	//			newPoint2 = intersectPoints[1];
-	//			XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&v2.Position, XMLoadFloat3(&v2.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-
-	//			// Vertex 2 is alone
-	//			model->newVertex.push_back(v2);
-	//			model->newVertex.push_back(newPoint1);
-	//			model->newVertex.push_back(newPoint2);
-
-	//			unsigned short index = model->newIndex.getSize();
-	//			model->newIndex.push_back(index);
-	//			model->newIndex.push_back(index + 1);
-	//			model->newIndex.push_back(index + 2);
-
-	//			newPoint1 = intersectPoints[0];
-	//			newPoint2 = intersectPoints[1];
-	//			XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&v1.Position, XMLoadFloat3(&v1.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&v3.Position, XMLoadFloat3(&v3.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			model->newVertex.push_back(v1);
-	//			model->newVertex.push_back(v3);
-	//			model->newVertex.push_back(newPoint1);
-
-	//			index = model->newIndex.getSize();
-	//			model->newIndex.push_back(index);
-	//			model->newIndex.push_back(index + 1);
-	//			model->newIndex.push_back(index + 2);
-
-	//			model->newVertex.push_back(v3);
-	//			model->newVertex.push_back(newPoint1);
-	//			model->newVertex.push_back(newPoint2);
-
-	//			index = model->newIndex.getSize();
-	//			model->newIndex.push_back(index);
-	//			model->newIndex.push_back(index + 1);
-	//			model->newIndex.push_back(index + 2);
-	//		}
-	//		else if ((d3 > 0 && d1 < 0 && d2 < 0) || (d3 < 0 && d1 > 0 && d2 > 0))
-	//		{
-	//			VERTEX_3D newPoint1, newPoint2;
-	//			int dir = 1;
-	//			if (d3 < 0)
-	//				dir *= -1;
-	//			newPoint1 = intersectPoints[0];
-	//			newPoint2 = intersectPoints[1];
-	//			XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&v3.Position, XMLoadFloat3(&v3.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			// Vertex 3 is alone
-	//			model->newVertex.push_back(v3);
-	//			model->newVertex.push_back(newPoint1);
-	//			model->newVertex.push_back(newPoint2);
-
-	//			unsigned short index = model->newIndex.getSize();
-	//			model->newIndex.push_back(index);
-	//			model->newIndex.push_back(index + 1);
-	//			model->newIndex.push_back(index + 2);
-
-	//			newPoint1 = intersectPoints[0];
-	//			newPoint2 = intersectPoints[1];
-	//			XMStoreFloat3(&newPoint1.Position, XMLoadFloat3(&intersectPoints[0].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&newPoint2.Position, XMLoadFloat3(&intersectPoints[1].Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&v1.Position, XMLoadFloat3(&v1.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			XMStoreFloat3(&v2.Position, XMLoadFloat3(&v2.Position) - 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//			model->newVertex.push_back(v1);
-	//			model->newVertex.push_back(v2);
-	//			model->newVertex.push_back(newPoint1);
-
-	//			index = model->newIndex.getSize();
-	//			model->newIndex.push_back(index);
-	//			model->newIndex.push_back(index + 1);
-	//			model->newIndex.push_back(index + 2);
-
-	//			model->newVertex.push_back(v2);
-	//			model->newVertex.push_back(newPoint1);
-	//			model->newVertex.push_back(newPoint2);
-
-	//			index = model->newIndex.getSize();
-	//			model->newIndex.push_back(index);
-	//			model->newIndex.push_back(index + 1);
-	//			model->newIndex.push_back(index + 2);
-	//		}
-	//	}
-	//	else
-	//	{
-	//		int dir = 1;
-	//		if (d1 < 0)
-	//			dir *= -1;
-	//		XMStoreFloat3(&v1.Position, XMLoadFloat3(&v1.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//		XMStoreFloat3(&v2.Position, XMLoadFloat3(&v2.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//		XMStoreFloat3(&v3.Position, XMLoadFloat3(&v3.Position) + 1.5f * dir * XMLoadFloat3(&cuttingPlane.localNormal));
-	//		model->newVertex.push_back(v1);
-	//		model->newVertex.push_back(v2);
-	//		model->newVertex.push_back(v3);
-
-	//		unsigned short index = model->newIndex.getSize();
-	//		model->newIndex.push_back(index);
-	//		model->newIndex.push_back(index + 1);
-	//		model->newIndex.push_back(index + 2);
-	//	}
-	//}
 
 	if (updateModel == TRUE)
 	{
@@ -830,15 +660,12 @@ void SetLocalCuttingPlane(void)
 	XMStoreFloat4x4(&cuttingPlane.localmtxWorld, worldMatrix);
 }
 
-void ProcessEdge(VERTEX_3D v1, VERTEX_3D v2, float d1, float d2, VERTEX_3D *intersectionPoint, int *count, BOOL& potentialCut)
+void ProcessEdge(VERTEX_3D v1, VERTEX_3D v2, float d1, float d2, unsigned short idx1, unsigned short idx2,
+	IntersectPoints* intersectionPoint, int *count, BOOL& potentialCut)
 {
-	PrintDebugProc("d1: %f d2: %f\n", d1, d2);
 
 	if ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) 
 	{
-		PrintDebugProc("Different Point1X: %f, Point1Y: %f, Point1Z: %f\n", v1.Position.x, v1.Position.y, v1.Position.z);
-		PrintDebugProc("Different Point2X: %f, Point2Y: %f, Point2Z: %f\n", v2.Position.x, v2.Position.y, v2.Position.z);
-
 		float t = -d1 / (d2 - d1);
 		XMFLOAT3 intersection;
 		XMStoreFloat3(&intersection, XMLoadFloat3(&v1.Position) + t * (XMLoadFloat3(&XMFLOAT3(v2.Position.x - v1.Position.x, v2.Position.y - v1.Position.y, v2.Position.z - v1.Position.z))));
@@ -862,11 +689,34 @@ void ProcessEdge(VERTEX_3D v1, VERTEX_3D v2, float d1, float d2, VERTEX_3D *inte
 			&& screenY <= max(startY, endY)
 			&& screenY >= min(startY, endY))
 		{
-			PrintDebugProc("intersection X: %f, Y: %f, Z: %f\n", intersection.x, intersection.y, intersection.z);
 			if (*count < 2)
 			{
-				intersectionPoint[*count] = v1;
-				intersectionPoint[*count].Position = intersection;
+				XMFLOAT3 vector = XMFLOAT3(v2.Position.x - v1.Position.x, v2.Position.y - v1.Position.y, v2.Position.z - v1.Position.z);
+				float distance = sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+				XMFLOAT3 midVector = XMFLOAT3(intersection.x - v1.Position.x, intersection.y - v1.Position.y, intersection.z - v1.Position.z);
+				float midDistance = sqrt(midVector.x * midVector.x + midVector.y * midVector.y + midVector.z * midVector.z);
+				float t = midDistance / distance;
+				XMFLOAT3 normal;
+				XMFLOAT4 diffuse;
+				XMFLOAT2 texCoord;
+				normal.x = v1.Normal.x + (v2.Normal.x - v1.Normal.x) * t;
+				normal.y = v1.Normal.y + (v2.Normal.y - v1.Normal.y) * t;
+				normal.z = v1.Normal.z + (v2.Normal.z - v1.Normal.z) * t; 
+				diffuse.x = v1.Diffuse.x + (v2.Diffuse.x - v1.Diffuse.x) * t;
+				diffuse.y = v1.Diffuse.y + (v2.Diffuse.y - v1.Diffuse.y) * t;
+				diffuse.z = v1.Diffuse.z + (v2.Diffuse.z - v1.Diffuse.z) * t;
+				diffuse.w = v1.Diffuse.w + (v2.Diffuse.w - v1.Diffuse.w) * t;
+				texCoord.x = v1.TexCoord.x + (v2.TexCoord.x - v1.TexCoord.x) * t;
+				texCoord.y = v1.TexCoord.y + (v2.TexCoord.y - v1.TexCoord.y) * t;
+				intersectionPoint[*count].intersection = v1;
+				intersectionPoint[*count].intersection.Position = intersection;
+				intersectionPoint[*count].intersection.Normal = normal;
+				intersectionPoint[*count].intersection.Diffuse = diffuse;
+				intersectionPoint[*count].intersection.TexCoord = texCoord;
+				intersectionPoint[*count].intersection.TexCoord = texCoord;
+
+				intersectionPoint[*count].point1 = v1.Position;
+				intersectionPoint[*count].point2 = v2.Position;
 				(*count)++;
 			}
 		}
@@ -875,12 +725,6 @@ void ProcessEdge(VERTEX_3D v1, VERTEX_3D v2, float d1, float d2, VERTEX_3D *inte
 			potentialCut = TRUE;
 		}
 
-
-	}
-	else 
-	{
-		PrintDebugProc("Same Point1X: %f, Point1Y: %f, Point1Z: %f\n", v1.Position.x, v1.Position.y, v1.Position.z);
-		PrintDebugProc("Same Point2X: %f, Point2Y: %f, Point2Z: %f\n", v2.Position.x, v2.Position.y, v2.Position.z);
 	}
 }
 

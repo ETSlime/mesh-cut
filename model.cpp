@@ -632,6 +632,7 @@ void UpdateModel(DX11_MODEL* Model)
 		int subsetVertexCnt = subsetVertex->getSize();
 		subset.StartIndex = indexCnt;
 		subset.IndexNum = subsetVertexCnt;
+		subset.Material = Model->newSubsetMaterial[i];
 		Model->modelData->SubsetArray[i] = subset;
 		for (int j = 0; j < subsetVertexCnt; j++)
 		{
@@ -649,6 +650,7 @@ void UpdateModel(DX11_MODEL* Model)
 		int subsetVertexCnt = subsetVertex->getSize();
 		subset.StartIndex = indexCnt;
 		subset.IndexNum = subsetVertexCnt;
+		subset.Material = Model->oldSubsetMaterial[i];
 		Model->modelData->SubsetArray[i + newSubsetCnt] = subset;
 		for (int j = 0; j < subsetVertexCnt; j++)
 		{
